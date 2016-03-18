@@ -1,0 +1,21 @@
+difference(){
+translate([0,0,0.1]){
+    hull(){
+        cylinder(r=19,h=10.02);
+        translate([23.88,0,0])cylinder(r=4,h=10.02);
+    }
+    hull(){
+        translate([0,0,10])cylinder(r1=19,r2=8,h=15);
+        translate([23.88,0,10])cylinder(r=4,h=15);
+    }
+    cylinder(r=8,h=31);
+}
+
+translate([0,0,10])cylinder(r1=16,r2=5,h=15,$fn=50);
+cylinder(r=5.1,h=33,$fn=30);
+cylinder(r=16,h=10.02,$fn=50);
+translate([23.88,0,0])cylinder(r=2.7/2,h=30,$fn=20);
+translate([0,0,28])rotate([-90,0,0])cylinder(r=2,h=15);
+rotate([0,0,34])cube([30,2,8]);
+}
+//23.88
