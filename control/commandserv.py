@@ -102,31 +102,52 @@ class commandserv:
         
     def pick(self,h=49.5):
         self.startpump()
-        self.p.send_now("G1 Z%d F2000"%(h-10,))
-        self.p.send_now("G1 Z%d F1000"%(h,))
+        self.p.send_now("G1 Z%f F2000"%(h-10,))
+        self.p.send_now("G1 Z%f F1000"%(h,))
         self.grabpart()
-        self.p.send_now("G1 Z%d F1000"%(h-10,))
+        self.p.send_now("G1 Z%f F1000"%(h-10,))
         
     def place(self,h=49.5,stoppump=True):
-        self.p.send_now("G1 Z%d F2000"%(h-10,))
-        self.p.send_now("G1 Z%d F1000"%(h,))
+        self.p.send_now("G1 Z%f F2000"%(h-10,))
+        self.p.send_now("G1 Z%f F1000"%(h,))
         if(stoppump):
             self.stoppump()
         self.droppart()
-        self.p.send_now("G1 Z%d F2000"%(h-10,))
+        self.p.send_now("G1 Z%f F2000"%(h-10,))
         
     def pp_direct(self,start=(100,100),end=(200,200),h1=49.5,h2=49.5,rot=90):
-        self.p.send_now("G1 Z%d F2000"%(min(h1,h2)-10,))
-        self.p.send_now("G1 X%d Y%d E0 F15000"%start)
+        self.p.send_now("G1 Z%f F2000"%(min(h1,h2)-10,))
+        self.p.send_now("G1 X%f Y%f E0 F15000"%start)
         self.pick(h=h1)
-        self.p.send_now("G1 Z%d E%d F2000"%(min(h1,h2)-10,rot+15))
-        self.p.send_now("G1 X%d Y%d E%d F15000"%(end[0],end[1],rot))
+        self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(end[0],end[1],rot))
         self.place(h=h2)
     
     def pickfrom(self,pos=(100,100),h=49.5):
-        self.p.send_now("G1 Z%d F2000"%(h-10,))
-        self.p.send_now("G1 X%d Y%d E0 F15000"%start)
+        self.p.send_now("G1 Z%f F2000"%(h-10,))
+        self.p.send_now("G1 X%f Y%f E0 F15000"%pos)
         self.pick(h=h1)
+        
+    def placeat(self, pos=(100,100), h=49.5, rot=90):
+        self.p.send_now("G1 Z%f F2000"%(h-10,))
+        self.p.send_now("G1 Z%f E%f F2000"%(h-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(pos[0],pos[1],rot))
+        self.place(h=h)
+        
+        
+    def home(self):
+        self.p.send_now("G28")
+        
+    def moveto(self, x=None, y=None, z=None, r=None, f=15000):
+        if(x is None and y is None and z is None and r is None):
+            return
+        command="G1 "
+        if(x is not None): command += "X%f "%(x,)
+        if(y is not None): command += "Y%f "%(y,)
+        if(z is not None): command += "Z%f "%(z,)
+        if(r is not None): command += "E%f "%(r.)
+        command+="F%d"%(f,)
+        self.p.send_now(command)
         
     def sync(self):
         self.p.send_now("M400")
@@ -135,8 +156,8 @@ class commandserv:
         
     def picktocam(self,pos=(100,100),h1=49.5,rot=90,h2=30):
         self.pickfrom(pos,h1)
-        self.p.send_now("G1 Z%d E%d F2000"%(min(h1,h2)-10,rot+15))
-        self.p.send_now("G1 X%d Y%d E%d F15000"%(self.camerapos[0],self.camerapos[1],rot))
+        self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0],self.camerapos[1],rot))
         self.sync()
         
     def downpic(self):
