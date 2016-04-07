@@ -34,9 +34,9 @@ class usbcam:
         self.stream.release()
         
 class rpicam:
-    def __init__(self, camid):
+    def __init__(self):
         self.img=None
-        self.camid=camid
+        self.camid=-1
         self.seqno=0
         self.imgno=0
         self.stream=picamera.PiCamera()
