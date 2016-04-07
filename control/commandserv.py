@@ -80,11 +80,14 @@ class commandserv:
     def close(self):
         self.upcam.close()
         self.downcam.close()
+        self.disconnect()
         
     def startpump(self):
+        self.p.send_now("M400")
         self.p.send_now("M42 P57 S255")
         
     def stoppump(self):
+        self.p.send_now("M400")
         self.p.send_now("M42 P57 S0")
         
     def grabpart(self):
@@ -110,9 +113,9 @@ class commandserv:
     def place(self,h=49.5,stoppump=True):
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 Z%f F1000"%(h,))
+        self.droppart()
         if(stoppump):
             self.stoppump()
-        self.droppart()
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         
     def pp_direct(self,start=(100,100),end=(200,200),h1=49.5,h2=49.5,rot=90):
