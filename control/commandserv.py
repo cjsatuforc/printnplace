@@ -145,7 +145,7 @@ class commandserv:
         if(x is not None): command += "X%f "%(x,)
         if(y is not None): command += "Y%f "%(y,)
         if(z is not None): command += "Z%f "%(z,)
-        if(r is not None): command += "E%f "%(r.)
+        if(r is not None): command += "E%f "%(r,)
         command+="F%d"%(f,)
         self.p.send_now(command)
         
