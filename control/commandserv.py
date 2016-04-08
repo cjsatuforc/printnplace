@@ -72,6 +72,11 @@ class commandserv:
         self.upcam=rpicam()
         self.pumpon=0
         self.defaulth=42
+        self.camoffset=(15.3,40.1)
+        self.pinoffset=(0,0)
+        self.blcomp=0.5
+        self.camrot=77
+        self.camstep=111
 
     def __enter__(self):
         return self
@@ -136,9 +141,11 @@ class commandserv:
         if h2 is None:
             h2=self.defaulth
         self.p.send_now("G1 Z%f F2000"%(min(h1,h2)-10,))
+        self.p.send_now("G1 X%f Y%f E0 F15000"%(start[0]-self.blcomp,start[1]-self.blcomp))
         self.p.send_now("G1 X%f Y%f E0 F15000"%start)
         self.pick(h=h1)
         self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(end[0]-self.blcomp,end[1]-self.blcomp,rot))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(end[0],end[1],rot))
         self.place(h=h2)
     
@@ -146,6 +153,7 @@ class commandserv:
         if h is None:
             h=self.defaulth
         self.p.send_now("G1 Z%f F2000"%(h-10,))
+        self.p.send_now("G1 X%f Y%f E0 F15000"%(pos[0]-self.blcomp,pos[1]-self.blcomp))
         self.p.send_now("G1 X%f Y%f E0 F15000"%pos)
         self.pick(h=h1)
         
@@ -154,6 +162,7 @@ class commandserv:
             h=self.defaulth
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 Z%f E%f F2000"%(h-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(pos[0]-self.blcomp,pos[1]-self.blcomp,rot))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(pos[0],pos[1],rot))
         self.place(h=h)
         
@@ -164,9 +173,19 @@ class commandserv:
             command+=" "+param
         self.p.send_now(command)
         
+    def movecamto(self, x, y, z=None, r=None, f=15000):
+        self.moveto(x-self.camoffset[0],y-self.camoffset[1],z,r,f)
+        
     def moveto(self, x=None, y=None, z=None, r=None, f=15000):
         if(x is None and y is None and z is None and r is None):
             return
+        command="G1 "
+        if(x is not None): command += "X%f "%(x-self.blcomp,)
+        if(y is not None): command += "Y%f "%(y-self.blcomp,)
+        if(z is not None): command += "Z%f "%(z,)
+        if(r is not None): command += "E%f "%(r,)
+        command+="F%d"%(f,)
+        self.p.send_now(command)
         command="G1 "
         if(x is not None): command += "X%f "%(x,)
         if(y is not None): command += "Y%f "%(y,)
@@ -187,6 +206,7 @@ class commandserv:
             h2=self.defaulth
         self.pickfrom(pos,h1)
         self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
+        self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0]-self.blcomp,self.camerapos[1]-self.blcomp,rot))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0],self.camerapos[1],rot))
         self.sync()
         
@@ -218,4 +238,21 @@ class commandserv:
             time.sleep(0.1)
         return (self.upcam.imgno, self.upcam.img)
         
+    def map(self, xstart=220, ystart=240, xsize=140, ysize=340, step=5, camstep=None, rot=None):
+        if camstep is None:
+            camstep=self.camstep
+        if rot is None:
+            rot=self.camrot
+        self.home("Z")
+        target=np.zeros((xsize/step*camstep,ysize/step*camstep,3),np.uint8)
+        for i in xrange(xsize/step):
+            x=xstart+i*step
+            for j in xrange(ysize/step):
+                y=ystart+j*step
+                self.movecamto(x,y)
+                im=downpicrot(rot,camstep)
+                target[j*camstep:(j+1)*camstep, i*camstep:(i+1)*camstep]=im
+        return target
+                
+                
         
