@@ -241,20 +241,21 @@ class commandserv:
             time.sleep(0.1)
         return (self.upcam.imgno, self.upcam.img)
         
-    def map(self, xstart=220, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
+    def map(self, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
         if camstep is None:
             camstep=self.camstep
         if rot is None:
             rot=self.camrot
         self.home("Z")
-        target=np.zeros(((xsize/step+1)*camstep,(ysize/step+1)*camstep,3),np.uint8)
+        target=np.zeros(((xsize/step)*camstep,(ysize/step)*camstep,3),np.uint8)
         for i in xrange(xsize/step):
             x=xstart+i*step
             for j in xrange(ysize/step):
                 y=ystart+j*step
+                invj=ysize/step-j
                 self.movecamto(x,y)
                 im=self.downpicrot(rot,camstep)
-                target[i*camstep:(i+1)*camstep, j*camstep:(j+1)*camstep]=im
+                target[i*camstep:(i+1)*camstep, invj*camstep:(invj+1)*camstep]=im
         return target
                 
                 
