@@ -84,9 +84,6 @@ class commandserv:
     def __exit__(self, type, value, traceback):
         self.close()
         
-    def __del__(self):
-        self.close()
-        
     def close(self):
         self.upcam.close()
         self.downcam.close()
@@ -178,6 +175,9 @@ class commandserv:
         
     def movecamto(self, x, y, z=None, r=None, f=15000):
         self.moveto(x-self.camoffset[0],y-self.camoffset[1],z,r,f)
+        self.p.send_now("M400")
+        self.p.send_now("G4 P100")
+        self.p.send_now("M400")
         
     def moveto(self, x=None, y=None, z=None, r=None, f=15000):
         if(x is None and y is None and z is None and r is None):
