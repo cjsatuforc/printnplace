@@ -244,7 +244,7 @@ class commandserv:
         if rot is None:
             rot=self.camrot
         self.home("Z")
-        target=np.zeros((xsize/step*camstep,ysize/step*camstep,3),np.uint8)
+        target=np.zeros(((xsize/step+1)*camstep,(ysize/step+1)*camstep,3),np.uint8)
         for i in xrange(xsize/step):
             x=xstart+i*step
             for j in xrange(ysize/step):
