@@ -250,7 +250,7 @@ class commandserv:
             for j in xrange(ysize/step):
                 y=ystart+j*step
                 self.movecamto(x,y)
-                im=downpicrot(rot,camstep)
+                im=self.downpicrot(rot,camstep)
                 target[j*camstep:(j+1)*camstep, i*camstep:(i+1)*camstep]=im
         return target
                 
