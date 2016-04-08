@@ -71,6 +71,7 @@ class commandserv:
         self.downcam=usbcam(0)
         self.upcam=rpicam()
         self.pumpon=0
+        self.defaulth=42
 
     def __enter__(self):
         return self
@@ -81,7 +82,7 @@ class commandserv:
     def close(self):
         self.upcam.close()
         self.downcam.close()
-        self.disconnect()
+        self.p.disconnect()
         
     def startpump(self):
         if self.pumpon:
@@ -110,14 +111,14 @@ class commandserv:
         self.p.send_now("G4 P50")
         self.p.send_now("M42 P10 S0")
         
-    def pick(self,h=49.5):
+    def pick(self,h=self.defaulth):
         self.startpump()
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 Z%f F1000"%(h,))
         self.grabpart()
         self.p.send_now("G1 Z%f F1000"%(h-10,))
         
-    def place(self,h=49.5,stoppump=True):
+    def place(self,h=self.defaulth,stoppump=True):
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 Z%f F1000"%(h,))
         self.droppart()
@@ -125,7 +126,7 @@ class commandserv:
             self.stoppump()
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         
-    def pp_direct(self,start=(100,100),end=(200,200),h1=49.5,h2=49.5,rot=90):
+    def pp_direct(self,start=(100,100),end=(200,200),h1=self.defaulth,h2=self.defaulth,rot=90):
         self.p.send_now("G1 Z%f F2000"%(min(h1,h2)-10,))
         self.p.send_now("G1 X%f Y%f E0 F15000"%start)
         self.pick(h=h1)
@@ -133,12 +134,12 @@ class commandserv:
         self.p.send_now("G1 X%f Y%f E%f F15000"%(end[0],end[1],rot))
         self.place(h=h2)
     
-    def pickfrom(self,pos=(100,100),h=49.5):
+    def pickfrom(self,pos=(100,100),h=self.defaulth):
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 X%f Y%f E0 F15000"%pos)
         self.pick(h=h1)
         
-    def placeat(self, pos=(100,100), h=49.5, rot=90):
+    def placeat(self, pos=(100,100), h=self.defaulth, rot=90):
         self.p.send_now("G1 Z%f F2000"%(h-10,))
         self.p.send_now("G1 Z%f E%f F2000"%(h-10,rot+15))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(pos[0],pos[1],rot))
@@ -167,7 +168,7 @@ class commandserv:
         self.p.send_now("M400")
         if not self.p.priqueue.empty(): self.p.priqueue.join()
         
-    def picktocam(self,pos=(100,100),h1=49.5,rot=90,h2=30):
+    def picktocam(self,pos=(100,100),h1=self.defaulth,rot=90,h2=self.defaulth):
         self.pickfrom(pos,h1)
         self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0],self.camerapos[1],rot))
@@ -179,7 +180,21 @@ class commandserv:
         while(self.downcam.flag):
             time.sleep(0.1)
         return (self.downcam.imgno, self.downcam.img)
-    
+        
+    def downpicrot(self,rot=77,size=111,cross=True):
+        xdiff=size
+        im=self.downpic()[1]
+        if im is None:
+            return None
+        m=cv2.getRotationMatrix2D(((640)/2,(480)/2),rot,1.0)
+        imr=cv2.warpAffine(im,m,(640,480))
+        imroi=imr[(640-xdiff)/2+0:(640-xdiff)/2+xdiff+0,(480-xdiff)/2+60:(480-xdiff)/2+xdiff+60]
+        dims=imroi.shape
+        if cross:
+            cv2.line(imroi,(dims[1]/2,0),(dims[1]/2,dims[0]-1),(0,0,255))
+            cv2.line(imroi,(0,dims[0]/2),(dims[1]-1,dims[0]/2),(0,0,255))
+        return imroi
+        
     def uppic(self):
         self.sync()
         self.upcam.flag=1
