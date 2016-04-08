@@ -84,6 +84,9 @@ class commandserv:
     def __exit__(self, type, value, traceback):
         self.close()
         
+    def __del__(self):
+        self.close()
+        
     def close(self):
         self.upcam.close()
         self.downcam.close()
@@ -244,14 +247,14 @@ class commandserv:
         if rot is None:
             rot=self.camrot
         self.home("Z")
-        target=np.zeros(((ysize/step+1)*camstep,(xsize/step+1)*camstep,3),np.uint8)
+        target=np.zeros(((xsize/step+1)*camstep,(ysize/step+1)*camstep,3),np.uint8)
         for i in xrange(xsize/step):
             x=xstart+i*step
             for j in xrange(ysize/step):
                 y=ystart+j*step
                 self.movecamto(x,y)
                 im=self.downpicrot(rot,camstep)
-                target[j*camstep:(j+1)*camstep, i*camstep:(i+1)*camstep]=im
+                target[i*camstep:(i+1)*camstep, j*camstep:(j+1)*camstep]=im
         return target
                 
                 
