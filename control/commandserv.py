@@ -70,6 +70,7 @@ class commandserv:
         self.camerapos=(300,300)
         self.downcam=usbcam(0)
         self.upcam=rpicam()
+        self.pumpon=0
 
     def __enter__(self):
         return self
@@ -83,12 +84,18 @@ class commandserv:
         self.disconnect()
         
     def startpump(self):
+        if self.pumpon:
+            return
         self.p.send_now("M400")
         self.p.send_now("M42 P57 S255")
+        self.p.send_now("G4 P50")
+        self.p.send_now("M400")
+        self.pumpon=1
         
     def stoppump(self):
         self.p.send_now("M400")
         self.p.send_now("M42 P57 S0")
+        self.pumpon=0;
         
     def grabpart(self):
         self.p.send_now("M42 P10 S0")
@@ -138,8 +145,11 @@ class commandserv:
         self.place(h=h)
         
         
-    def home(self):
-        self.p.send_now("G28")
+    def home(self, param=None):
+        command="G28"
+        if param is not None:
+            command+=" "+param
+        self.p.send_now(command)
         
     def moveto(self, x=None, y=None, z=None, r=None, f=15000):
         if(x is None and y is None and z is None and r is None):
