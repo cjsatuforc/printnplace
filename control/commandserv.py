@@ -174,7 +174,7 @@ class commandserv:
         self.p.send_now(command)
         
     def movecamto(self, x, y, z=None, r=None, f=15000):
-        self.moveto(x-self.camoffset[0],y-self.camoffset[1],z,r,f)
+        self.moveto(x+self.camoffset[0],y+self.camoffset[1],z,r,f)
         self.p.send_now("M400")
         self.p.send_now("G4 P100")
         self.p.send_now("M400")
