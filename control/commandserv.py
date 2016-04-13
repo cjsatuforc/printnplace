@@ -90,6 +90,7 @@ class commandserv:
         self.p.disconnect()
         
     def startpump(self):
+        self.p.send_now("M42 P10 S0")
         if self.pumpon:
             return
         self.p.send_now("M400")
@@ -114,7 +115,7 @@ class commandserv:
         self.p.send_now("M107")
         self.p.send_now("M42 P10 S255")
         self.p.send_now("G4 P50")
-        self.p.send_now("M42 P10 S0")
+        
         
     def pick(self,h=None):
         if h is None:
@@ -134,6 +135,8 @@ class commandserv:
         if(stoppump):
             self.stoppump()
         self.p.send_now("G1 Z%f F2000"%(h-10,))
+        if(not stoppump):
+            self.p.send_now("M42 P10 S0")
         
     def pp_direct(self,start=(100,100),end=(200,200),h1=None,h2=None,rot=90):
         if h1 is None:
@@ -211,6 +214,7 @@ class commandserv:
         self.p.send_now("G1 Z%f E%f F2000"%(min(h1,h2)-10,rot+15))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0]-self.blcomp,self.camerapos[1]-self.blcomp,rot))
         self.p.send_now("G1 X%f Y%f E%f F15000"%(self.camerapos[0],self.camerapos[1],rot))
+        self.p.send_now("G4 P100")
         self.sync()
         
     def downpic(self):
@@ -220,7 +224,11 @@ class commandserv:
             time.sleep(0.1)
         return (self.downcam.imgno, self.downcam.img)
         
-    def downpicrot(self,rot=77,size=111,cross=True):
+    def downpicrot(self,rot=None,size=None,cross=True):
+        if size is None:
+            size=self.camstep
+        if rot is None:
+            rot=self.camrot
         xdiff=size
         im=self.downpic()[1]
         if im is None:
@@ -234,12 +242,18 @@ class commandserv:
             cv2.line(imroi,(0,dims[0]/2),(dims[1]-1,dims[0]/2),(0,0,255))
         return imroi
         
+    def savedprot(self, filename, rot=None, size=None, cross=True):
+        cv2.imwrite(filename,self.downpicrot(rot,size,cross))
+        
     def uppic(self):
         self.sync()
         self.upcam.flag=1
         while(self.upcam.flag):
             time.sleep(0.1)
         return (self.upcam.imgno, self.upcam.img)
+        
+    def saveuppic(self, filename):
+        cv2.imwrite(filename,self.uppic()[1])
         
     def map(self, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
         if camstep is None:
@@ -257,6 +271,7 @@ class commandserv:
                 im=self.downpicrot(rot,camstep)
                 target[i*camstep:(i+1)*camstep, invj*camstep:(invj+1)*camstep]=im
         return target
-                
-                
+    
+    def savemap(filename, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
+        cv2.imwrite(filename, self.map(xstart, ystart, xsize, ysize, step, camstep, rot))
         
