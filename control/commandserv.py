@@ -12,10 +12,17 @@ class usbcam:
         self.img=None
         self.camid=camid
         self.seqno=0
+        self.resetafter=0
         self.imgno=0
-        self.stream=cv2.VideoCapture(camid)
         self.stop=0
         self.flag=0
+        self.stream=None
+        self.thread=threading.Thread(target=self.grabimg)
+        self.open()
+        
+    def open(self):
+        self.resetafter=1000 #how many frames are captured before a camera reset. 0 keeps the camera running at all times
+        self.stream=cv2.VideoCapture(camid)
         self.thread=threading.Thread(target=self.grabimg)
         self.thread.start()
     
@@ -27,10 +34,16 @@ class usbcam:
             i=self.stream.read()
             if i[0]:
                 self.seqno+=1
+                if(self.resetafter>1):
+                    self.resetafter=self.resetafter-1
                 if(self.flag):
                     self.img=i[1]
                     self.imgno=self.seqno
                     self.flag=0
+                if self.resetafer==1:
+                    self.stream.release()
+                    self.open()
+                    return
         self.stream.release()
         
 class rpicam:
@@ -242,6 +255,15 @@ class commandserv:
             cv2.line(imroi,(0,dims[0]/2),(dims[1]-1,dims[0]/2),(0,0,255))
         return imroi
         
+    def drawpartroi(self,image,partsize=None,pixscale=None):
+        if partsize is None:
+            partsize=self.parts["0603"]
+        if pixscale is None:
+            pixscale=self.camstep/5.
+        dims=image.shape
+        center=(image.shape[1]/2,image.shape[0]/2)
+        cv2.rectangle(image,(center[0]-partsize[0],center[1]-partsize[1]),(center[0]+partsize[0],center[1]+partsize[1]),())
+        
     def savedprot(self, filename, rot=None, size=None, cross=True):
         cv2.imwrite(filename,self.downpicrot(rot,size,cross))
         
@@ -257,7 +279,7 @@ class commandserv:
         
     def map(self, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
         if camstep is None:
-            camstep=self.camstep
+            camstep=step*self.camstep/5
         if rot is None:
             rot=self.camrot
         self.home("Z")
