@@ -22,7 +22,7 @@ class usbcam:
         
     def open(self):
         self.resetafter=1000 #how many frames are captured before a camera reset. 0 keeps the camera running at all times
-        self.stream=cv2.VideoCapture(camid)
+        self.stream=cv2.VideoCapture(self.camid)
         self.thread=threading.Thread(target=self.grabimg)
         self.thread.start()
     
