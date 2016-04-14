@@ -40,7 +40,7 @@ class usbcam:
                     self.img=i[1]
                     self.imgno=self.seqno
                     self.flag=0
-                if self.resetafer==1:
+                if self.resetafter==1:
                     self.stream.release()
                     self.open()
                     return
