@@ -1,34 +1,35 @@
 import printcore
 import time
 import cv2
-import threading
 import picamera
 import picamera.array
 import io
 import numpy as np
+import math
 
 class usbcam:
     def __init__(self, camid):
-        self.img=None
+        #self.image=None
         self.camid=camid
-        self.seqno=0
-        self.resetafter=0
-        self.imgno=0
-        self.stop=0
-        self.flag=0
         self.stream=None
-        self.thread=threading.Thread(target=self.grabimg)
-        self.open()
+        self.isopen=False
+        #self.open()
         
     def open(self):
-        self.resetafter=1000 #how many frames are captured before a camera reset. 0 keeps the camera running at all times
         self.stream=cv2.VideoCapture(self.camid)
-        self.thread=threading.Thread(target=self.grabimg)
-        self.thread.start()
-    
+        self.isopen=True
+        
     def close(self):
-        self.stop=1
+        self.stream.release()
+        self.isopen=False
     
+    def img(self):
+        i=self.stream.read()
+        if i[0]:
+            return i[1][:]
+        else:
+            return None
+"""
     def grabimg(self):
         while(not self.stop):
             i=self.stream.read()
@@ -45,23 +46,35 @@ class usbcam:
                     self.open()
                     return
         self.stream.release()
+"""
         
 class rpicam:
     def __init__(self):
-        self.img=None
-        self.camid=-1
-        self.seqno=0
-        self.imgno=0
+        self.image=None
+        self.stream=None
+        self.imgstream=None
+        self.isopen=False
+        #self.open()
+        
+    def open(self,res=(2592,1944),crop=(.1,.1,.8,.8)):
         self.stream=picamera.PiCamera()
-        self.stream.resolution=(2592,1944)
-        self.stop=0
-        self.flag=0
-        self.thread=threading.Thread(target=self.grabimg)
-        self.thread.start()
-    
+        self.stream.resolution=res
+        self.stream.crop=crop
+        self.imgstream=picamera.array.PiRGBArray(self.stream)
+        self.isopen=True
+        
     def close(self):
-        self.stop=1
+        self.imgstream.close()
+        self.stream.close()
+        self.isopen=False
     
+    def img(self,usevideoport=False):
+        self.stream.capture(self.imgstream,format="bgr",use_video_port=usevideoport)
+        self.image=imgstream.array[:]
+        return self.image
+        
+            
+    """
     def grabimg(self):
         while not self.stop:
             with picamera.array.PiRGBArray(self.stream) as imgstream:
@@ -74,7 +87,18 @@ class rpicam:
                     self.imgno=self.seqno
                     self.flag=0
         self.stream.close()
-        
+    """
+
+
+def rotpoint(point,center,rot):
+    rads=math.radians(rot)
+    r=[point[0]-center[0],point[1]-center[1]]
+    return int(center[0]+math.cos(rads)*r[0]-math.sin(rads)*r[1]),int(center[1]+math.sin(rads)*r[0]+math.cos(rads)*r[1])
+
+class part:
+    def __init__(self, name="0603", size=(1.6,0.8,0.5)):
+        self.name=name
+        self.size=size
 
 class commandserv:
     def __init__(self,port="/dev/ttyACM0",baud=115200):
@@ -88,8 +112,12 @@ class commandserv:
         self.camoffset=(15.3,40.1)
         self.pinoffset=(0,0)
         self.blcomp=0.5
+        self.upcamrot=90
+        self.upcamillum=127
         self.camrot=77
         self.camstep=111
+        self.parts={}
+        self.parts["0603"]=part("0603",(1.6,0.8,0.5))
 
     def __enter__(self):
         return self
@@ -98,9 +126,11 @@ class commandserv:
         self.close()
         
     def close(self):
-        self.upcam.close()
-        self.downcam.close()
         self.p.disconnect()
+        if(self.upcam.isopen):
+            self.upcam.close()
+        if(self.downcam.isopen):
+            self.downcam.close()
         
     def startpump(self):
         self.p.send_now("M42 P10 S0")
@@ -231,19 +261,18 @@ class commandserv:
         self.sync()
         
     def downpic(self):
+        if(not self.downcam.isopen):
+            self.downcam.open()
         self.sync()
-        self.downcam.flag=1
-        while(self.downcam.flag):
-            time.sleep(0.1)
-        return (self.downcam.imgno, self.downcam.img)
-        
+        return self.downcam.img()
+    
     def downpicrot(self,rot=None,size=None,cross=True):
         if size is None:
             size=self.camstep
         if rot is None:
             rot=self.camrot
         xdiff=size
-        im=self.downpic()[1]
+        im=self.downpic()
         if im is None:
             return None
         m=cv2.getRotationMatrix2D(((640)/2,(480)/2),rot,1.0)
@@ -255,27 +284,67 @@ class commandserv:
             cv2.line(imroi,(0,dims[0]/2),(dims[1]-1,dims[0]/2),(0,0,255))
         return imroi
         
-    def drawpartroi(self,image,partsize=None,pixscale=None):
-        if partsize is None:
-            partsize=self.parts["0603"]
+    def uppicrot(self,rot=None,cross=True):
+        if rot is None:
+            rot=self.upcamrot
+        xdiff=size
+        im=self.downpic()
+        if im is None:
+            return None
+        odims=im.shape
+        m=cv2.getRotationMatrix2D(((odims[1])/2,(odims[0])/2),rot,1.0)
+        imr=cv2.warpAffine(im,m,(odims[1],odims[0]))
+        imroi=imr# [(odims[1]-xdiff)/2+0:(odims[1]-xdiff)/2+xdiff+0,(odims[0]-xdiff)/2+60:(odims[0]-xdiff)/2+xdiff+60]
+        dims=imroi.shape
+        if cross:
+            cv2.line(imroi,(dims[1]/2,0),(dims[1]/2,dims[0]-1),(0,0,255))
+            cv2.line(imroi,(0,dims[0]/2),(dims[1]-1,dims[0]/2),(0,0,255))
+        return imroi
+        
+    def drawpartroi(self,image,part=None,pixscale=None,center=None,rot=0,cross=False):
+        if part is None:
+            part=self.parts["0603"]
+        if(part is not None):
+            partsize=part.size
+        else:
+            return
         if pixscale is None:
             pixscale=self.camstep/5.
         dims=image.shape
-        center=(image.shape[1]/2,image.shape[0]/2)
-        cv2.rectangle(image,(center[0]-partsize[0],center[1]-partsize[1]),(center[0]+partsize[0],center[1]+partsize[1]),())
+        if center is None:
+            center=(image.shape[1]/2.,image.shape[0]/2.)
+        start=((center[0]-partsize[0]*pixscale/2.),(center[1]-partsize[1]*pixscale/2.))
+        end=((center[0]+partsize[0]*pixscale/2.),(center[1]+partsize[1]*pixscale/2.))
+        cv2.line(image,rotpoint(start,center,rot),rotpoint((start[0],end[1]),center,rot),(0,0,255))
+        cv2.line(image,rotpoint(start,center,rot),rotpoint((end[0],start[1]),center,rot),(0,0,255))
+        cv2.line(image,rotpoint(end,center,rot),rotpoint((start[0],end[1]),center,rot),(0,0,255))
+        cv2.line(image,rotpoint(end,center,rot),rotpoint((end[0],start[1]),center,rot),(0,0,255))
+        if(cross):
+            cv2.line(image,rotpoint((center[0],center[1]-partsize[1]*pixscale),center,0),rotpoint((center[0],center[1]+partsize[1]*pixscale),center,0),(0,0,255))    
+            cv2.line(image,rotpoint((center[0]-partsize[0]*pixscale,center[1]),center,0),rotpoint((center[0]+partsize[0]*pixscale,center[1]),center,0),(0,0,255))    
+            cv2.line(image,rotpoint((center[0],center[1]-partsize[0]*pixscale),center,0),rotpoint((center[0],center[1]+partsize[0]*pixscale),center,0),(0,0,255))    
+            cv2.line(image,rotpoint((center[0]-partsize[1]*pixscale,center[1]),center,0),rotpoint((center[0]+partsize[1]*pixscale,center[1]),center,0),(0,0,255))    
+        
         
     def savedprot(self, filename, rot=None, size=None, cross=True):
         cv2.imwrite(filename,self.downpicrot(rot,size,cross))
+    
+    def saveuprot(self, filename, rot=None, cross=True):
+        cv2.imwrite(filename,self.uppicrot(rot,cross))
         
-    def uppic(self):
+    def uppic(self,illum=None):
+        if illum is None:
+            illum=self.upcamillum
+        self.p.send_now("M42 P8 S%d" % illum)
+        if(not self.downcam.isopen):
+            self.downcam.open()
         self.sync()
-        self.upcam.flag=1
-        while(self.upcam.flag):
-            time.sleep(0.1)
-        return (self.upcam.imgno, self.upcam.img)
+        return self.upcam.img()
+        self.p.send_now("M42 P8 S0")
+        
         
     def saveuppic(self, filename):
-        cv2.imwrite(filename,self.uppic()[1])
+        cv2.imwrite(filename,self.uppic())
         
     def map(self, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
         if camstep is None:
@@ -292,6 +361,7 @@ class commandserv:
                 self.movecamto(x,y)
                 im=self.downpicrot(rot,camstep)
                 target[i*camstep:(i+1)*camstep, invj*camstep:(invj+1)*camstep]=im
+        self.downca
         return target
     
     def savemap(filename, xstart=270, ystart=240, xsize=70, ysize=170, step=5, camstep=None, rot=None):
