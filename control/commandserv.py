@@ -287,8 +287,8 @@ class commandserv:
     def uppicrot(self,rot=None,cross=True):
         if rot is None:
             rot=self.upcamrot
-        xdiff=size
-        im=self.downpic()
+        #xdiff=size
+        im=self.uppic()
         if im is None:
             return None
         odims=im.shape
