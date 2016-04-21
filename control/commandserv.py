@@ -54,9 +54,11 @@ class rpicam:
         self.stream=None
         self.imgstream=None
         self.isopen=False
+        self.usevideoport=False
         #self.open()
-        
-    def open(self,res=(2592,1944),crop=(.1,.1,.8,.8)):
+        #max res is (2592,1944)
+    def open(self,res=(800,600),crop=(.1,.1,.8,.8),usevideoport=False):
+        self.usevideoport=usevideoport
         self.stream=picamera.PiCamera()
         self.stream.resolution=res
         self.stream.crop=crop
@@ -68,8 +70,8 @@ class rpicam:
         self.stream.close()
         self.isopen=False
     
-    def img(self,usevideoport=False):
-        self.stream.capture(self.imgstream,format="bgr",use_video_port=usevideoport)
+    def img(self):
+        self.stream.capture(self.imgstream,format="bgr",use_video_port=self.usevideoport)
         self.imgstream.truncate(0)
         self.image=self.imgstream.array[:]
         return self.image
@@ -340,8 +342,9 @@ class commandserv:
         if(not self.downcam.isopen):
             self.downcam.open()
         self.sync()
-        return self.upcam.img()
+        im=self.upcam.img()
         self.p.send_now("M42 P8 S0")
+        return im
         
         
     def saveuppic(self, filename):
