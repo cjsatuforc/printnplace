@@ -70,6 +70,7 @@ class rpicam:
     
     def img(self,usevideoport=False):
         self.stream.capture(self.imgstream,format="bgr",use_video_port=usevideoport)
+        self.imgstream.truncate(0)
         self.image=self.imgstream.array[:]
         return self.image
         
